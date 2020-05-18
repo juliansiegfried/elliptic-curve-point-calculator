@@ -45,15 +45,17 @@ public:
 unsigned int findModularInverse(unsigned int a, unsigned int m)
 {
 	a %= m;
-	for (unsigned int x = 1; x < x+1; x++)
+	for (unsigned int x = 1; x < m; x++)
 		if ((a * x) % m == 1)
 			return x;
-	throw "Couldnt find modular inverse";
+
+	cout << endl << "Error: The modular inverse couldnt be found";
+	exit(1);
 }
 
 unsigned int moduloOfNegative(int a, unsigned int m) // apparantly, % is not supposed to be used on negative numbers, i.e. my system says: -2 % 17 = 16
 {
-	return a + ceil(abs((float) a / m)) * m;
+	return a + (unsigned int) ceil(abs((float) a / m)) * m;
 }
 
 unsigned int calculateS(Point point1, Point point2, unsigned int a, unsigned int p)
