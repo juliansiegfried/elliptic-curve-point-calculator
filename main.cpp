@@ -13,9 +13,11 @@ public:
 	{
 		do
 		{
-			cin.clear();
-			cout << "Is this point the neutral element? (1 for yes, 0 for no): "; cin >> isNeutralElement;
-		} while (cin.fail()); // I actually tend to ignore this question so that's why I use this little sanity check to prevent an infinite loop
+			cin.clear(); // clear failbit if input is faulty
+			cin.ignore(numeric_limits<streamsize>::max(), '\n'); // discard bad characters
+
+			cout << "Is this point the neutral element? (1 for yes, 0 for no): ";
+		} while (!(cin >> isNeutralElement)); // I actually tend to ignore this question so that's why I use this little sanity check to prevent an infinite loop
 
 		if (!isNeutralElement)
 		{
@@ -24,9 +26,9 @@ public:
 		}
 	}
 
-	bool isElementOfCurve(unsigned int a, unsigned int b, unsigned int p)
+	bool isElementOfCurve(int a, int b, int p)
 	{
-		if ((y * y) % p == (x * x * x + a * x + b) % p)
+		if ((y * y) % p == (x * x * x + a * x + b) % p) // y == x mod p?
 			return true;
 
 		cout << "This point is not an element of the curve you're using." << endl;
@@ -36,52 +38,54 @@ public:
 	void printAsResultingPoint()
 	{
 		if (isNeutralElement)
-			cout << "The point you're looking for is: O" << endl;
+			cout << "The point you're looking for is: O (the neutral element)" << endl;
 		else
 			cout << "The point you're looking for is: (" << x << ", " << y << ")" << endl;
 	}
 };
 
-unsigned int findModularInverse(unsigned int a, unsigned int m)
+int findModularInverse(int a, int m)
 {
 	a %= m;
-	for (unsigned int x = 1; x < m; x++)
+	for (int x = 1; x < m; x++)
 		if ((a * x) % m == 1)
 			return x;
 
-	cout << endl << "Error: The modular inverse couldnt be found";
-	exit(1);
+	return 0; // this means that there is no modular inverse: P + (-P) = O -> the resulting point will be the neutral element
 }
 
-unsigned int moduloOfNegative(int a, unsigned int m) // apparantly, % is not supposed to be used on negative numbers, i.e. my system says: -2 % 17 = 16
+int modulo(int a, int m) // apparantly, % is not supposed to be used on negative numbers, i.e. my system says: -2 % 17 = 16
 {
-	return a + (unsigned int) ceil(abs((float) a / m)) * m;
+	return a >= m ? a % m : a >= 0 ? a : (a % m + m) % m;
 }
 
-unsigned int calculateS(Point point1, Point point2, unsigned int a, unsigned int p)
+int calculateS(Point point1, Point point2, int a, int p)
 {
-	if (point1.x == point2.x && point1.y == point2.y) // if points are equal, double the point
-	{
+	if (point1.x == point2.x && point1.y == point2.y) // if points are equal, double the point (tangent)
 		return (3 * point1.x * point1.x + a) * findModularInverse(2 * point1.y, p) % p;
-	}
-	else // add the points
-	{
-		int numerator = point2.y - point1.y;
-		if (numerator < 0)
-			numerator = moduloOfNegative(numerator, p);
-
-		int denominator = point2.x - point1.x;
-		if (denominator < 0)
-			denominator = moduloOfNegative(denominator, p);
-
-		return numerator * findModularInverse(denominator, p) % p;
-	}
+	else // else add the points (secant)
+		return modulo(point2.y - point1.y, p) * findModularInverse(modulo(point2.x - point1.x, p), p) % p;
 }
 
-bool isCurveCorrect(unsigned int a, unsigned int b, unsigned int p)
+bool isPrimeNumber(int n) // 6k +- 1 optimized trial division as seen on: https://en.wikipedia.org/wiki/Primality_test
 {
-	// are a, b elements of Z_p? Is p an allowed integer (will be negative if not)? Do a and b meet the condition 4a^3 + 27b^2 != 0?
-	return a > 0 && a < p && b > 0 && b < p && p > 0 && (4 * a * a * a + 27 * b * b) % p != 0;
+	// filter some trivial cases
+	if (n <= 3)
+		return n > 1;
+	if (n % 2 == 0 || n % 3 == 0)
+		return false;
+
+	for (int i = 5; i * i <= n; i = i + 6) // the actual optimized trial division
+		if (n % i == 0 || n % (i + 2) == 0)
+			return false;
+
+	return true;
+}
+
+bool isCurveCorrect(int a, int b, int p)
+{
+	// are a, b elements of Z_p? Is p an allowed integer (will be negative if not)? Is p prime? Do a and b meet the condition 4a^3 + 27b^2 != 0?
+	return a >= 0 && a < p && b >= 0 && b < p && p > 0 && isPrimeNumber(p) && (4 * a * a * a + 27 * b * b) % p != 0;
 }
 
 int main()
@@ -91,7 +95,7 @@ int main()
 	// ask for correct user input
 	while (!isCurveCorrect(a, b, p))
 	{
-		cout << "Please use parameters that are elements of Z_p:" << endl;
+		cout << "Please use correct parameters (see documentation):" << endl;
 		cout << "Enter parameter p: "; cin >> p;
 		cout << "Enter parameter a: "; cin >> a;
 		cout << "Enter parameter b: "; cin >> b;
@@ -112,7 +116,7 @@ int main()
 		if (!p2.isNeutralElement && !p2.isElementOfCurve(a, b, p))
 			continue;
 
-		if (p1.isNeutralElement || p2.isNeutralElement)
+		if (p1.isNeutralElement || p2.isNeutralElement) // if one point is O: P + O = P; if both points are O: O + O = O
 		{
 			if (p1.isNeutralElement && p2.isNeutralElement)
 			{
@@ -134,23 +138,20 @@ int main()
 			}
 		}
 
+		if (p1.x == p2.x && p1.y != p2.y) // if both points aren't O but are self-inverse: P + (-P) = O
+		{
+			p3.isNeutralElement = true;
+			p3.printAsResultingPoint();
+			continue;
+		}
+
 		s = calculateS(p1, p2, a, p); // this fn also determines wether the points are equal
 
 		cout << "Using parameters: a = " << a << ", b = " << b << ", p = " << p << ", s = " << s << endl;
 
 		// calculate the resulting point
-		p3.x = (s * s - p1.x - p2.x);
-		p3.y = (s * (p1.x - p3.x) - p1.y);
-
-		if (p3.x >= 0)
-			p3.x %= p;
-		else
-			p3.x = moduloOfNegative(p3.x, p);
-
-		if (p3.y >= 0)
-			p3.y %= p;
-		else
-			p3.y = moduloOfNegative(p3.y, p);
+		p3.x = modulo(s * s - p1.x - p2.x, p);
+		p3.y = modulo(s * (p1.x - p3.x) - p1.y, p);
 
 		p3.printAsResultingPoint();
 	}
