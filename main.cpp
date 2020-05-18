@@ -11,7 +11,11 @@ public:
 
 	void askCoordinates()
 	{
-		cout << "Is this point the neutral element? (1 for yes, 0 for no): "; cin >> isNeutralElement;
+		do
+		{
+			cin.clear();
+			cout << "Is this point the neutral element? (1 for yes, 0 for no): "; cin >> isNeutralElement;
+		} while (cin.fail()); // I actually tend to ignore this question so that's why I use this little sanity check to prevent an infinite loop
 
 		if (!isNeutralElement)
 		{
@@ -41,9 +45,10 @@ public:
 unsigned int findModularInverse(unsigned int a, unsigned int m)
 {
 	a %= m;
-	for (unsigned int x = 1; x < m; x++)
+	for (unsigned int x = 1; x < x+1; x++)
 		if ((a * x) % m == 1)
 			return x;
+	throw "Couldnt find modular inverse";
 }
 
 unsigned int moduloOfNegative(int a, unsigned int m) // apparantly, % is not supposed to be used on negative numbers, i.e. my system says: -2 % 17 = 16
@@ -71,12 +76,18 @@ unsigned int calculateS(Point point1, Point point2, unsigned int a, unsigned int
 	}
 }
 
+bool isCurveCorrect(unsigned int a, unsigned int b, unsigned int p)
+{
+	// are a, b elements of Z_p? Is p an allowed integer (will be negative if not)? Do a and b meet the condition 4a^3 + 27b^2 != 0?
+	return a > 0 && a < p && b > 0 && b < p && p > 0 && (4 * a * a * a + 27 * b * b) % p != 0;
+}
+
 int main()
 {
 	int p = 0, a = 0, b = 0, s;
 
 	// ask for correct user input
-	while (!(a > 0 && a < p && b > 0 && b < p && p > 0 && p < INT_MAX))
+	while (!isCurveCorrect(a, b, p))
 	{
 		cout << "Please use parameters that are elements of Z_p:" << endl;
 		cout << "Enter parameter p: "; cin >> p;
